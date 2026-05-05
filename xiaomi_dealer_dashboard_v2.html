@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Xiaomi Dealer Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#060b18;--bg2:#080f1f;--bg3:#0a1020;--bg4:#0f172a;
+    --border:#1e293b;--border2:#334155;
+    --text:#e2e8f0;--muted:#94a3b8;--dim:#64748b;--dimmer:#475569;
+    --orange:#FF6900;--blue:#3b82f6;--green:#10b981;--purple:#a855f7;
+    --amber:#f59e0b;--slate:#94a3b8;--copper:#b45309;
+    --blue-lt:#93c5fd;--orange-lt:#fb923c;--green-lt:#34d399;--purple-lt:#c084fc;--cyan:#22d3ee;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',Arial,sans-serif;font-size:14px}
+  body{display:flex;flex-direction:column;min-height:100vh}
+  button{font-family:inherit;cursor:pointer}
+  a{color:inherit;text-decoration:none}
+  table{border-collapse:collapse;width:100%}
+
+  #header{background:linear-gradient(135deg,#1a0533 0%,#0c1a3a 60%,#060b18 100%);border-bottom:1px solid var(--border);padding:13px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+  .header-left{display:flex;align-items:center;gap:13px}
+  .header-subtitle{font-size:10px;color:var(--muted);margin-top:2px}
+  .tab-btns{display:flex;gap:6px}
+  .tab-btn{padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;border:none;outline:none;transition:all .15s}
+  .tab-btn.active{background:var(--orange);color:#fff}
+  .tab-btn:not(.active){background:var(--border);color:var(--muted)}
+
+  #kpi{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border);flex-shrink:0}
+  .kpi-cell{padding:15px 22px;background:var(--bg3)}
+  .kpi-cell:not(:last-child){border-right:1px solid var(--border)}
+  .kpi-label{font-size:10px;color:var(--dim);margin-bottom:4px;letter-spacing:1px;text-transform:uppercase}
+  .kpi-val{font-size:25px;font-weight:800}
+
+  #filters{display:flex;gap:7px;padding:11px 22px;border-bottom:1px solid var(--border);background:#080f1f;align-items:center;flex-wrap:wrap;flex-shrink:0}
+  .filter-label{font-size:10px;color:var(--dim);letter-spacing:1px}
+  .pill{padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;outline:none;transition:all .15s}
+  .sort-btn{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;border:none;outline:none;transition:all .15s}
+  .sort-btn.active{background:#1d4ed8;color:#bfdbfe}
+  .sort-btn:not(.active){background:var(--border);color:var(--dim)}
+  .filter-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+  #body{display:flex;flex:1;min-height:0;overflow:hidden}
+
+  /* LEADERBOARD */
+  #leaderboard-view{flex:1;overflow-y:auto;background:var(--bg2);padding:20px 22px}
+  .section-label{font-size:11px;color:var(--dim);margin-bottom:10px;letter-spacing:1px}
+  .top3{display:flex;gap:12px;margin-bottom:22px}
+  .top3-card{flex:1;padding:16px;border-radius:12px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+  th{padding:9px 10px;text-align:left;font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);background:var(--bg4);white-space:nowrap}
+  th.center{text-align:center}
+  td{padding:9px 10px;border-bottom:1px solid #0f172a}
+  tr.lb-row{cursor:pointer;transition:background .1s}
+  .slab-badge{padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+  .pts-mini{display:flex;gap:3px}
+  .pts-mini span{font-size:9px;padding:2px 4px;border-radius:4px;font-weight:700}
+
+  /* CHARTS */
+  #chart-view{flex:1;overflow-y:auto;padding:22px;background:var(--bg2);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .chart-card{background:var(--bg3);border-radius:12px;border:1px solid var(--border);padding:18px}
+  .chart-card.full{grid-column:1/-1}
+  .chart-title{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:14px}
+
+  /* BREAKDOWN */
+  #breakdown-view{flex:1;overflow-y:auto;padding:22px;background:var(--bg2)}
+  .slab-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+  .slab-card{border-radius:12px;padding:16px}
+  .slab-row{display:flex;justify-content:space-between;margin-bottom:5px;font-size:11px}
+  .bd-table-card{background:var(--bg3);border-radius:12px;border:1px solid var(--border);overflow:hidden}
+  .bd-table-header{padding:13px 20px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted)}
+  .mini-bar-wrap{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+  .mini-bar{width:34px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .mini-bar-fill{height:100%;border-radius:2px}
+
+  /* DETAIL PANEL */
+  #detail-panel{width:280px;border-left:1px solid var(--border);background:#060b18;padding:18px;overflow-y:auto;flex-shrink:0;display:none}
+  .detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .close-btn{background:var(--border);border:none;color:var(--muted);border-radius:6px;padding:3px 9px;cursor:pointer;font-size:12px}
+  .detail-hero{border-radius:12px;padding:14px;margin-bottom:12px}
+  .detail-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}
+  .detail-stat{background:var(--bg4);border-radius:8px;padding:9px 11px;border:1px solid var(--border)}
+  .detail-stat-label{font-size:9px;color:var(--dimmer);margin-bottom:3px}
+  .detail-stat-val{font-size:14px;font-weight:700}
+  .bd-bar-row{margin-bottom:8px}
+  .bd-bar-meta{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
+  .bd-bar-track{background:var(--border);border-radius:4px;height:5px;overflow:hidden}
+  .bd-bar-fill{height:100%;border-radius:4px}
+  .detail-post{background:var(--bg4);border-radius:10px;border:1px solid var(--border);padding:13px}
+  .detail-post-link{display:block;text-align:center;padding:7px;background:#1d4ed8;border-radius:7px;color:#bfdbfe;font-size:11px;font-weight:700}
+
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:#0a1020}
+  ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+  canvas{max-width:100%}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="header-left">
+    <svg width="38" height="38" viewBox="-200.008 -199.727 512 512" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+      <path fill="#FF6900" d="M258.626-146.231c-48.304-48.118-117.759-53.496-202.634-53.496c-84.982,0-154.542,5.44-202.826,53.688c-48.277,48.228-53.174,117.676-53.174,202.561c0,84.899,4.897,154.368,53.194,202.613c48.281,48.255,117.833,53.139,202.806,53.139c84.974,0,154.514-4.884,202.795-53.139c48.294-48.254,53.205-117.714,53.205-202.613C311.992-28.472,307.028-97.995,258.626-146.231z"/>
+      <path fill="#FFFFFF" d="M204.546-41.122c1.759,0,3.223,1.417,3.223,3.161v189.386c0,1.715-1.464,3.139-3.223,3.139H163.05c-1.781,0-3.228-1.424-3.228-3.139V-37.961c0-1.743,1.446-3.161,3.228-3.161H204.546z M24.468-41.122c31.303,0,64.033,1.435,80.176,17.589c15.871,15.897,17.59,47.549,17.656,78.286v96.671c0,1.715-1.446,3.139-3.219,3.139h-41.49c-1.777,0-3.229-1.424-3.229-3.139V53.09c-0.044-17.167-1.031-34.81-9.884-43.692c-7.62-7.641-21.839-9.391-36.625-9.754h-75.21c-1.764,0-3.208,1.419-3.208,3.136v148.645c0,1.715-1.462,3.139-3.237,3.139h-41.516c-1.774,0-3.201-1.424-3.201-3.139V-37.961c0-1.743,1.426-3.161,3.201-3.161H24.468z M33.755,34.305c1.766,0,3.201,1.413,3.201,3.143v113.977c0,1.715-1.436,3.139-3.201,3.139H-9.829c-1.792,0-3.228-1.424-3.228-3.139V37.448c0-1.73,1.436-3.143,3.228-3.143H33.755z"/>
+    </svg>
+    <div>
+      <div class="header-subtitle">Xiaomi Dealer Activation &middot; Retail Head Dashboard</div>
+    </div>
+  </div>
+  <div class="tab-btns">
+    <button class="tab-btn active" data-tab="leaderboard">🏆 Leaderboard</button>
+    <button class="tab-btn" data-tab="chart">📊 Charts</button>
+    <button class="tab-btn" data-tab="breakdown">💡 Breakdown</button>
+  </div>
+</div>
+
+<div id="kpi">
+  <div class="kpi-cell">
+    <div class="kpi-label">⭐ Total Points Awarded</div>
+    <div class="kpi-val" style="color:var(--orange-lt)" id="kpi-pts">—</div>
+  </div>
+  <div class="kpi-cell">
+    <div class="kpi-label">👁️ Total Reel Views</div>
+    <div class="kpi-val" style="color:var(--blue)" id="kpi-views">—</div>
+  </div>
+  <div class="kpi-cell">
+    <div class="kpi-label">📡 Total Reach</div>
+    <div class="kpi-val" style="color:var(--green)" id="kpi-reach">—</div>
+  </div>
+  <div class="kpi-cell" style="border-right:none">
+    <div class="kpi-label">🔥 Total Engagement</div>
+    <div class="kpi-val" style="color:var(--purple)" id="kpi-eng">—</div>
+  </div>
+</div>
+
+<div id="filters">
+  <span class="filter-label">FILTER:</span>
+  <button class="pill" data-slab="All">🔢 All</button>
+  <button class="pill" data-slab="Viral">💎 Viral</button>
+  <button class="pill" data-slab="Gold">🥇 Gold</button>
+  <button class="pill" data-slab="Silver">🥈 Silver</button>
+  <button class="pill" data-slab="Bronze">🥉 Bronze</button>
+  <div class="filter-right">
+    <span class="filter-label">SORT:</span>
+    <button class="sort-btn" data-sort="totalPts">Points</button>
+    <button class="sort-btn" data-sort="totalViews">Views</button>
+    <button class="sort-btn" data-sort="totalReach">Reach</button>
+    <button class="sort-btn" data-sort="totalEng">Engagement</button>
+  </div>
+</div>
+
+<div id="body">
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboard-view">
+    <div class="section-label">🏆 TOP PERFORMERS</div>
+    <div class="top3" id="top3-cards"></div>
+    <div style="overflow-x:auto">
+      <table id="lb-table">
+        <thead>
+          <tr>
+            <th class="center">Rank</th>
+            <th>DMS</th><th>Slab</th><th>Points</th><th>Views</th>
+            <th>Likes</th><th>Shares</th><th>Engagement</th><th>Reach</th><th>Pts Breakdown</th>
+          </tr>
+        </thead>
+        <tbody id="lb-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div id="chart-view" style="display:none">
+    <div class="chart-card full">
+      <div class="chart-title" id="bar-title">📊 Top 10 DMS by Total Points</div>
+      <canvas id="bar-chart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🎯 Slab Distribution</div>
+      <canvas id="pie-chart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title" id="hbar-title">📡 Views vs Reach (Top 10)</div>
+      <canvas id="hbar-chart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- BREAKDOWN -->
+  <div id="breakdown-view" style="display:none">
+    <div class="slab-cards" id="slab-cards"></div>
+    <div class="bd-table-card">
+      <div class="bd-table-header">💡 Points Breakdown per DMS</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>DMS</th><th>Slab</th>
+            <th style="text-align:right">Like Pts</th>
+            <th style="text-align:right">View Pts</th>
+            <th style="text-align:right">Share Pts</th>
+            <th style="text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody id="bd-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div id="detail-panel">
+    <div class="detail-header">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px">DMS DETAIL</span>
+      <button class="close-btn" id="close-detail">✕</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+const RAW_DMS = [{"DMS":"187547","totalPts":1406191,"totalViews":697677,"totalLikes":2105,"totalShares":26,"totalReach":686021,"totalEng":2134,"likePts":10525,"viewPts":1395354,"sharePts":312,"topSlab":"Viral","rank":1},{"DMS":"321694","totalPts":134241,"totalViews":66050,"totalLikes":421,"totalShares":3,"totalReach":59090,"totalEng":432,"likePts":2105,"viewPts":132100,"sharePts":36,"topSlab":"Viral","rank":2},{"DMS":"471544","totalPts":96494,"totalViews":48247,"totalLikes":0,"totalShares":0,"totalReach":43637,"totalEng":7,"likePts":0,"viewPts":96494,"sharePts":0,"topSlab":"Viral","rank":3},{"DMS":"191943","totalPts":53953,"totalViews":25589,"totalLikes":555,"totalShares":0,"totalReach":23659,"totalEng":555,"likePts":2775,"viewPts":51178,"sharePts":0,"topSlab":"Viral","rank":4},{"DMS":"396974","totalPts":21015,"totalViews":13083,"totalLikes":357,"totalShares":40,"totalReach":12382,"totalEng":402,"likePts":1071,"viewPts":19624,"sharePts":320,"topSlab":"Gold","rank":5},{"DMS":"209807","totalPts":9315,"totalViews":5776,"totalLikes":217,"totalShares":0,"totalReach":5624,"totalEng":222,"likePts":651,"viewPts":8664,"sharePts":0,"topSlab":"Gold","rank":6},{"DMS":"494371","totalPts":9308,"totalViews":6205,"totalLikes":0,"totalShares":0,"totalReach":6027,"totalEng":13,"likePts":0,"viewPts":9308,"sharePts":0,"topSlab":"Gold","rank":7},{"DMS":"304616","totalPts":4924,"totalViews":4306,"totalLikes":189,"totalShares":48,"totalReach":4236,"totalEng":252,"likePts":378,"viewPts":4306,"sharePts":240,"topSlab":"Silver","rank":8},{"DMS":"389335","totalPts":3255,"totalViews":2965,"totalLikes":135,"totalShares":4,"totalReach":2955,"totalEng":151,"likePts":270,"viewPts":2965,"sharePts":20,"topSlab":"Silver","rank":9},{"DMS":"195484","totalPts":3105,"totalViews":2998,"totalLikes":51,"totalShares":1,"totalReach":2987,"totalEng":56,"likePts":102,"viewPts":2998,"sharePts":5,"topSlab":"Silver","rank":10},{"DMS":"215949","totalPts":2451,"totalViews":2401,"totalLikes":25,"totalShares":0,"totalReach":2411,"totalEng":28,"likePts":50,"viewPts":2401,"sharePts":0,"topSlab":"Silver","rank":11},{"DMS":"576576","totalPts":2386,"totalViews":2321,"totalLikes":30,"totalShares":1,"totalReach":2333,"totalEng":33,"likePts":60,"viewPts":2321,"sharePts":5,"topSlab":"Silver","rank":12},{"DMS":"189587","totalPts":2270,"totalViews":2270,"totalLikes":0,"totalShares":0,"totalReach":2284,"totalEng":0,"likePts":0,"viewPts":2270,"sharePts":0,"topSlab":"Silver","rank":13},{"DMS":"451047","totalPts":2161,"totalViews":2045,"totalLikes":53,"totalShares":2,"totalReach":2065,"totalEng":57,"likePts":106,"viewPts":2045,"sharePts":10,"topSlab":"Silver","rank":14},{"DMS":"329050","totalPts":1772,"totalViews":1614,"totalLikes":69,"totalShares":4,"totalReach":1643,"totalEng":73,"likePts":138,"viewPts":1614,"sharePts":20,"topSlab":"Silver","rank":15},{"DMS":"218578","totalPts":1745,"totalViews":1745,"totalLikes":0,"totalShares":0,"totalReach":1772,"totalEng":0,"likePts":0,"viewPts":1745,"sharePts":0,"topSlab":"Silver","rank":16},{"DMS":"212436","totalPts":1656,"totalViews":1481,"totalLikes":85,"totalShares":1,"totalReach":1513,"totalEng":86,"likePts":170,"viewPts":1481,"sharePts":5,"topSlab":"Silver","rank":17},{"DMS":"482330","totalPts":1525,"totalViews":1278,"totalLikes":121,"totalShares":1,"totalReach":1312,"totalEng":133,"likePts":242,"viewPts":1278,"sharePts":5,"topSlab":"Silver","rank":18},{"DMS":"560941","totalPts":1472,"totalViews":1369,"totalLikes":34,"totalShares":7,"totalReach":1402,"totalEng":42,"likePts":68,"viewPts":1369,"sharePts":35,"topSlab":"Silver","rank":19},{"DMS":"441377","totalPts":1287,"totalViews":1170,"totalLikes":56,"totalShares":1,"totalReach":1205,"totalEng":57,"likePts":112,"viewPts":1170,"sharePts":5,"topSlab":"Silver","rank":20},{"DMS":"617886","totalPts":1283,"totalViews":1207,"totalLikes":38,"totalShares":0,"totalReach":1242,"totalEng":38,"likePts":76,"viewPts":1207,"sharePts":0,"topSlab":"Silver","rank":21},{"DMS":"302011","totalPts":1238,"totalViews":1144,"totalLikes":42,"totalShares":2,"totalReach":1179,"totalEng":45,"likePts":84,"viewPts":1144,"sharePts":10,"topSlab":"Silver","rank":22},{"DMS":"187377","totalPts":1219,"totalViews":1164,"totalLikes":25,"totalShares":1,"totalReach":1199,"totalEng":26,"likePts":50,"viewPts":1164,"sharePts":5,"topSlab":"Silver","rank":23},{"DMS":"494398","totalPts":981,"totalViews":843,"totalLikes":69,"totalShares":0,"totalReach":878,"totalEng":70,"likePts":138,"viewPts":843,"sharePts":0,"topSlab":"Silver","rank":24},{"DMS":"393711","totalPts":900,"totalViews":794,"totalLikes":53,"totalShares":0,"totalReach":829,"totalEng":53,"likePts":106,"viewPts":794,"sharePts":0,"topSlab":"Silver","rank":25},{"DMS":"218563","totalPts":642,"totalViews":591,"totalLikes":23,"totalShares":1,"totalReach":624,"totalEng":26,"likePts":46,"viewPts":591,"sharePts":5,"topSlab":"Silver","rank":26},{"DMS":"196606","totalPts":620,"totalViews":620,"totalLikes":0,"totalShares":0,"totalReach":653,"totalEng":0,"likePts":0,"viewPts":620,"sharePts":0,"topSlab":"Silver","rank":27},{"DMS":"246831","totalPts":286,"totalViews":461,"totalLikes":17,"totalShares":13,"totalReach":491,"totalEng":31,"likePts":17,"viewPts":230,"sharePts":39,"topSlab":"Bronze","rank":28},{"DMS":"257644","totalPts":257,"totalViews":419,"totalLikes":44,"totalShares":1,"totalReach":448,"totalEng":49,"likePts":44,"viewPts":210,"sharePts":3,"topSlab":"Bronze","rank":29},{"DMS":"573807","totalPts":252,"totalViews":429,"totalLikes":32,"totalShares":2,"totalReach":458,"totalEng":36,"likePts":32,"viewPts":214,"sharePts":6,"topSlab":"Bronze","rank":30},{"DMS":"471895","totalPts":210,"totalViews":380,"totalLikes":20,"totalShares":0,"totalReach":408,"totalEng":37,"likePts":20,"viewPts":190,"sharePts":0,"topSlab":"Bronze","rank":31},{"DMS":"285509","totalPts":202,"totalViews":350,"totalLikes":21,"totalShares":2,"totalReach":377,"totalEng":23,"likePts":21,"viewPts":175,"sharePts":6,"topSlab":"Bronze","rank":32},{"DMS":"247056","totalPts":199,"totalViews":368,"totalLikes":15,"totalShares":0,"totalReach":395,"totalEng":15,"likePts":15,"viewPts":184,"sharePts":0,"topSlab":"Bronze","rank":33},{"DMS":"350376","totalPts":192,"totalViews":342,"totalLikes":21,"totalShares":0,"totalReach":368,"totalEng":23,"likePts":21,"viewPts":171,"sharePts":0,"topSlab":"Bronze","rank":34},{"DMS":"380672","totalPts":177,"totalViews":329,"totalLikes":13,"totalShares":0,"totalReach":355,"totalEng":13,"likePts":13,"viewPts":164,"sharePts":0,"topSlab":"Bronze","rank":35},{"DMS":"186293","totalPts":175,"totalViews":333,"totalLikes":9,"totalShares":0,"totalReach":359,"totalEng":9,"likePts":9,"viewPts":166,"sharePts":0,"topSlab":"Bronze","rank":36},{"DMS":"304275","totalPts":154,"totalViews":288,"totalLikes":10,"totalShares":0,"totalReach":312,"totalEng":10,"likePts":10,"viewPts":144,"sharePts":0,"topSlab":"Bronze","rank":37},{"DMS":"398078","totalPts":140,"totalViews":240,"totalLikes":20,"totalShares":0,"totalReach":262,"totalEng":21,"likePts":20,"viewPts":120,"sharePts":0,"topSlab":"Bronze","rank":38},{"DMS":"373795","totalPts":136,"totalViews":260,"totalLikes":6,"totalShares":0,"totalReach":283,"totalEng":6,"likePts":6,"viewPts":130,"sharePts":0,"topSlab":"Bronze","rank":39},{"DMS":"293334","totalPts":110,"totalViews":207,"totalLikes":6,"totalShares":0,"totalReach":227,"totalEng":6,"likePts":6,"viewPts":104,"sharePts":0,"topSlab":"Bronze","rank":40},{"DMS":"187059","totalPts":100,"totalViews":194,"totalLikes":3,"totalShares":0,"totalReach":214,"totalEng":3,"likePts":3,"viewPts":97,"sharePts":0,"topSlab":"Bronze","rank":41},{"DMS":"187279","totalPts":81,"totalViews":155,"totalLikes":3,"totalShares":0,"totalReach":172,"totalEng":3,"likePts":3,"viewPts":78,"sharePts":0,"topSlab":"Bronze","rank":42},{"DMS":"200249","totalPts":68,"totalViews":114,"totalLikes":8,"totalShares":1,"totalReach":128,"totalEng":10,"likePts":8,"viewPts":57,"sharePts":3,"topSlab":"Bronze","rank":43},{"DMS":"207499","totalPts":64,"totalViews":118,"totalLikes":5,"totalShares":0,"totalReach":133,"totalEng":5,"likePts":5,"viewPts":59,"sharePts":0,"topSlab":"Bronze","rank":44},{"DMS":"351109","totalPts":57,"totalViews":111,"totalLikes":1,"totalShares":0,"totalReach":125,"totalEng":1,"likePts":1,"viewPts":56,"sharePts":0,"topSlab":"Bronze","rank":45},{"DMS":"304044","totalPts":22,"totalViews":43,"totalLikes":0,"totalShares":0,"totalReach":51,"totalEng":0,"likePts":0,"viewPts":22,"sharePts":0,"topSlab":"Bronze","rank":46},{"DMS":"199751","totalPts":19,"totalViews":37,"totalLikes":1,"totalShares":0,"totalReach":44,"totalEng":1,"likePts":1,"viewPts":18,"sharePts":0,"topSlab":"Bronze","rank":47}];
+
+const RAW_POSTS = [{"dms":"187547","link":"https://www.instagram.com/reel/DXJN6nRjYvG/","postedAt":"15-Apr-2026","caption":"#arihantenterprises #xiaomifanfestival #redmi #note15 #atishayjain","likes":2105,"shares":26,"views":697677,"engagement":2134,"reach":686021,"points":1406191},{"dms":"321694","link":"https://www.instagram.com/reel/DWqeSAyCKvS/","postedAt":"03-Apr-2026","caption":"New Launch Alert! Presenting the all-new Redmi 15A","likes":421,"shares":3,"views":66050,"engagement":432,"reach":59090,"points":134241},{"dms":"471544","link":"https://www.instagram.com/reel/DXbEKcvDAvl/","postedAt":"22-Apr-2026","caption":"Relwanielectronics redmi mobile....","likes":0,"shares":0,"views":48247,"engagement":7,"reach":43637,"points":96494},{"dms":"191943","link":"https://www.instagram.com/reel/DXePb6SkzDZ/","postedAt":"23-Apr-2026","caption":"Xiaomi Fan Festival","likes":555,"shares":0,"views":25589,"engagement":555,"reach":23659,"points":53953},{"dms":"396974","link":"https://www.instagram.com/reel/DXHZ2YaDFOo/","postedAt":"14-Apr-2026","caption":"New Xiaomi 15 series SPECIAL 0% INTEREST","likes":357,"shares":40,"views":13083,"engagement":402,"reach":12382,"points":21015},{"dms":"209807","link":"https://www.instagram.com/reel/DXMZ78KgdFw/","postedAt":"16-Apr-2026","caption":"Xiaomi fan Festival Live in store @psamobileworld","likes":217,"shares":0,"views":5776,"engagement":222,"reach":5624,"points":9315},{"dms":"494371","link":"https://www.instagram.com/reel/DXZGJhgDORM/","postedAt":"21-Apr-2026","caption":"Call 9826661116 Pooja Appliances Patnipura Indore","likes":0,"shares":0,"views":6205,"engagement":13,"reach":6027,"points":9308},{"dms":"304616","link":"https://www.instagram.com/reel/DXZQIU_EY5N/","postedAt":"21-Apr-2026","caption":"Xiaomi Fan Festival is here! Redmi Note 15 Series offer","likes":189,"shares":48,"views":4306,"engagement":252,"reach":4236,"points":4924},{"dms":"389335","link":"https://www.instagram.com/reel/DXMASQmEXHB/","postedAt":"16-Apr-2026","caption":"#XiaomiFanFestival","likes":135,"shares":4,"views":2965,"engagement":151,"reach":2955,"points":3255},{"dms":"195484","link":"https://www.instagram.com/reel/DXL2Qhqx4gz/","postedAt":"16-Apr-2026","caption":"Xiaomi Fan Festival Live at Shan Mobile Point","likes":51,"shares":1,"views":2998,"engagement":56,"reach":2987,"points":3105},{"dms":"560941","link":"https://www.instagram.com/reel/DXZHasxDUpe/","postedAt":"21-Apr-2026","caption":"Xiaomi Fan Festival Is Now Live On Amrita Enterprises","likes":34,"shares":7,"views":1369,"engagement":42,"reach":1402,"points":1472},{"dms":"396974","link":"https://www.instagram.com/reel/DXHZ2YaDFOo/","postedAt":"14-Apr-2026","caption":"New Xiaomi 15 series SPECIAL 0% INTEREST","likes":357,"shares":40,"views":13083,"engagement":402,"reach":12382,"points":21015}];
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const SLAB = {
+  Viral:  {color:"#a855f7",bg:"#1a0533",border:"#a855f7",emoji:"💎",range:"25K+ views"},
+  Gold:   {color:"#f59e0b",bg:"#1c1000",border:"#f59e0b",emoji:"🥇",range:"5K–25K views"},
+  Silver: {color:"#94a3b8",bg:"#0f172a",border:"#64748b",emoji:"🥈",range:"501–5K views"},
+  Bronze: {color:"#b45309",bg:"#1c0e00",border:"#92400e",emoji:"🥉",range:"0–500 views"},
+};
+const SLAB_COLORS = {All:"#FF6900",Viral:"#a855f7",Gold:"#f59e0b",Silver:"#94a3b8",Bronze:"#b45309"};
+const MEDAL = ["🥇","🥈","🥉"];
+
+// Sort key → human label + accent color
+const SORT_META = {
+  totalPts:  {label:"Total Points",     color:"#fb923c", unit:"pts"},
+  totalViews:{label:"Reel Views",       color:"#3b82f6", unit:"views"},
+  totalReach:{label:"Estimated Reach",  color:"#10b981", unit:"reach"},
+  totalEng:  {label:"Engagement",       color:"#a855f7", unit:"eng"},
+};
+
+const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1)+"M" : n >= 1e3 ? (n/1e3).toFixed(1)+"K" : String(Math.round(n));
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+const state = {slabFilter:"All", sortBy:"totalPts", selected:null, view:"leaderboard"};
+
+// Chart.js instances — keyed by id
+const charts = {};
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+function getFiltered() {
+  const base = state.slabFilter === "All" ? RAW_DMS : RAW_DMS.filter(d => d.topSlab === state.slabFilter);
+  return [...base].sort((a, b) => b[state.sortBy] - a[state.sortBy]);
+}
+
+function getTop10() {
+  return getFiltered().slice(0, 10);
+}
+
+function getSlabCounts() {
+  const c = {};
+  RAW_DMS.forEach(d => { c[d.topSlab] = (c[d.topSlab] || 0) + 1; });
+  return c;
+}
+
+function destroyChart(id) {
+  // Double-safety: destroy via stored ref AND via Chart.getChart
+  if (charts[id]) { try { charts[id].destroy(); } catch(e){} delete charts[id]; }
+  const existing = Chart.getChart(id);
+  if (existing) { try { existing.destroy(); } catch(e){} }
+}
+
+// ── INIT KPI (static totals) ─────────────────────────────────────────────────
+(function() {
+  document.getElementById('kpi-pts').textContent   = fmt(RAW_DMS.reduce((s,d)=>s+d.totalPts,0));
+  document.getElementById('kpi-views').textContent = fmt(RAW_DMS.reduce((s,d)=>s+d.totalViews,0));
+  document.getElementById('kpi-reach').textContent = fmt(RAW_DMS.reduce((s,d)=>s+d.totalReach,0));
+  document.getElementById('kpi-eng').textContent   = fmt(RAW_DMS.reduce((s,d)=>s+d.totalEng,0));
+})();
+
+// ── RENDER ──────────────────────────────────────────────────────────────────
+function render() {
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === state.view));
+
+  // Views
+  document.getElementById('leaderboard-view').style.display = state.view === 'leaderboard' ? 'block' : 'none';
+  document.getElementById('chart-view').style.display       = state.view === 'chart'        ? 'grid'  : 'none';
+  document.getElementById('breakdown-view').style.display   = state.view === 'breakdown'    ? 'block' : 'none';
+
+  // Detail panel
+  document.getElementById('detail-panel').style.display = state.selected ? 'block' : 'none';
+
+  if (state.view === 'leaderboard') renderLeaderboard();
+  if (state.view === 'chart')       renderCharts();
+  if (state.view === 'breakdown')   renderBreakdown();
+  if (state.selected)               renderDetail();
+}
+
+// ── LEADERBOARD ─────────────────────────────────────────────────────────────
+function renderLeaderboard() {
+  const filtered = getFiltered();
+
+  // Top-3 hero cards (always top 3 by points)
+  const top3Pool = [...RAW_DMS].sort((a,b) => b.totalPts - a.totalPts).slice(0, 3);
+  const top3El = document.getElementById('top3-cards');
+  top3El.innerHTML = '';
+  top3Pool.forEach((d, i) => {
+    const cfg = SLAB[d.topSlab];
+    const isSel = state.selected?.DMS === d.DMS;
+    const card = document.createElement('div');
+    card.className = 'top3-card';
+    card.style.cssText = `background:linear-gradient(135deg,${cfg.bg},#0a1020);border:2px solid ${isSel ? cfg.color : cfg.border};box-shadow:${isSel ? `0 0 18px ${cfg.color}55` : 'none'}`;
+    card.innerHTML = `
+      <div style="font-size:26px">${MEDAL[i]}</div>
+      <div style="font-size:16px;font-weight:800;color:${cfg.color};margin:5px 0 2px">#${d.rank} DMS ${d.DMS}</div>
+      <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">${cfg.emoji} ${d.topSlab}</div>
+      <div style="font-size:22px;font-weight:900;color:#f8fafc">${fmt(d.totalPts)} <span style="font-size:11px;color:#64748b;font-weight:400">pts</span></div>
+      <div style="display:flex;gap:10px;margin-top:8px;font-size:11px;color:#64748b">
+        <span>👁 ${fmt(d.totalViews)}</span>
+        <span>👍 ${fmt(d.totalLikes)}</span>
+        <span>↗ ${fmt(d.totalShares)}</span>
+      </div>`;
+    card.onclick = () => { state.selected = isSel ? null : d; render(); };
+    top3El.appendChild(card);
+  });
+
+  // Full table
+  const tbody = document.getElementById('lb-tbody');
+  tbody.innerHTML = '';
+  filtered.forEach((d, idx) => {
+    const cfg = SLAB[d.topSlab];
+    const isSel = state.selected?.DMS === d.DMS;
+    const tr = document.createElement('tr');
+    tr.className = 'lb-row';
+    tr.style.cssText = `background:${isSel ? cfg.bg + 'bb' : idx%2===0 ? '#080f1f' : '#0a1020'};border-left:3px solid ${isSel ? cfg.color : 'transparent'}`;
+    tr.innerHTML = `
+      <td style="text-align:center">${d.rank<=3 ? `<span style="font-size:14px">${MEDAL[d.rank-1]}</span>` : `<span style="color:#475569;font-weight:700">#${d.rank}</span>`}</td>
+      <td style="font-weight:700;color:${d.rank<=3 ? cfg.color : '#e2e8f0'}">${d.DMS}</td>
+      <td><span class="slab-badge" style="background:${cfg.color}22;color:${cfg.color}">${cfg.emoji} ${d.topSlab}</span></td>
+      <td style="font-weight:800;color:${cfg.color}">${fmt(d.totalPts)}</td>
+      <td style="color:#93c5fd">${fmt(d.totalViews)}</td>
+      <td style="color:#fb923c">${fmt(d.totalLikes)}</td>
+      <td style="color:#34d399">${fmt(d.totalShares)}</td>
+      <td style="color:#c084fc">${fmt(d.totalEng)}</td>
+      <td style="color:#64748b">${fmt(d.totalReach)}</td>
+      <td>
+        <div class="pts-mini">
+          <span style="background:#fb923c22;color:#fb923c">L:${fmt(d.likePts)}</span>
+          <span style="background:#60a5fa22;color:#60a5fa">V:${fmt(d.viewPts)}</span>
+          <span style="background:#34d39922;color:#34d399">S:${fmt(d.sharePts)}</span>
+        </div>
+      </td>`;
+    tr.onclick = () => { state.selected = isSel ? null : d; render(); };
+    tbody.appendChild(tr);
+  });
+}
+
+// ── CHARTS (THE FIXED VERSION) ───────────────────────────────────────────────
+function renderCharts() {
+  const top10      = getTop10();            // ordered by current sortBy
+  const slabCounts = getSlabCounts();
+  const meta       = SORT_META[state.sortBy];
+  const sortKey    = state.sortBy;
+
+  const tooltipStyle = {
+    backgroundColor:'#0f172a', borderColor:'#1e293b', borderWidth:1,
+    titleColor:'#e2e8f0', bodyColor:'#94a3b8', padding:10,
+  };
+
+  // ── Bar chart: top 10 by selected metric, bars show that metric ──────────
+  document.getElementById('bar-title').textContent = `📊 Top 10 DMS by ${meta.label}`;
+  destroyChart('bar-chart');
+  charts['bar-chart'] = new Chart(document.getElementById('bar-chart'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(d => d.DMS),
+      datasets: [{
+        label: meta.label,
+        data: top10.map(d => d[sortKey]),
+        backgroundColor: top10.map(d => SLAB[d.topSlab].color),
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { ...tooltipStyle, callbacks: { label: ctx => `${fmt(ctx.raw)} ${meta.unit}` } },
+      },
+      scales: {
+        x: { ticks: { color:'#64748b', font:{size:10} }, grid: { color:'#1e293b' } },
+        y: { ticks: { color:'#64748b', font:{size:10}, callback: v => fmt(v) }, grid: { color:'#1e293b' } },
+      },
+    },
+  });
+
+  // ── Pie: slab distribution (static, no sort effect) ──────────────────────
+  destroyChart('pie-chart');
+  charts['pie-chart'] = new Chart(document.getElementById('pie-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Viral','Gold','Silver','Bronze'],
+      datasets: [{
+        data: [slabCounts.Viral||0, slabCounts.Gold||0, slabCounts.Silver||0, slabCounts.Bronze||0],
+        backgroundColor: ['#a855f7','#f59e0b','#94a3b8','#b45309'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      cutout: '60%',
+      plugins: {
+        legend: { display:true, position:'bottom', labels:{ color:'#94a3b8', font:{size:11}, padding:12 } },
+        tooltip: { ...tooltipStyle, callbacks:{ label: ctx => `${ctx.label}: ${ctx.raw} dealers` } },
+      },
+    },
+  });
+
+  // ── Horizontal bar: Views vs Reach for top 10 (sorted by current metric) ─
+  document.getElementById('hbar-title').textContent = `📡 Views vs Reach — Top 10 by ${meta.label}`;
+  destroyChart('hbar-chart');
+  charts['hbar-chart'] = new Chart(document.getElementById('hbar-chart'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(d => d.DMS),
+      datasets: [
+        { label:'Views', data: top10.map(d => d.totalViews), backgroundColor:'#3b82f6', borderRadius:3 },
+        { label:'Reach', data: top10.map(d => d.totalReach), backgroundColor:'#10b981', borderRadius:3 },
+      ],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: { display:true, labels:{ color:'#94a3b8', font:{size:11} } },
+        tooltip: { ...tooltipStyle, callbacks:{ label: ctx => `${ctx.dataset.label}: ${fmt(ctx.raw)}` } },
+      },
+      scales: {
+        x: { ticks:{ color:'#64748b', font:{size:9}, callback: v => fmt(v) }, grid:{ color:'#1e293b' } },
+        y: { ticks:{ color:'#64748b', font:{size:9} }, grid:{ color:'#1e293b' } },
+      },
+    },
+  });
+}
+
+// ── BREAKDOWN ────────────────────────────────────────────────────────────────
+function renderBreakdown() {
+  const slabCounts = getSlabCounts();
+  const filtered   = getFiltered();
+
+  const slabInfo = [
+    ['Viral','💎','25K+','5 pts','2 pts','12 pts'],
+    ['Gold','🥇','5K–25K','3 pts','1.5 pts','8 pts'],
+    ['Silver','🥈','501–5K','2 pts','1 pt','5 pts'],
+    ['Bronze','🥉','0–500','1 pt','0.5 pt','3 pts'],
+  ];
+
+  const slabEl = document.getElementById('slab-cards');
+  slabEl.innerHTML = '';
+  slabInfo.forEach(([slab,emoji,range,l,v,s]) => {
+    const cfg = SLAB[slab];
+    const el = document.createElement('div');
+    el.className = 'slab-card';
+    el.style.cssText = `background:${cfg.bg};border:1px solid ${cfg.border}`;
+    el.innerHTML = `
+      <div style="font-size:22px">${emoji}</div>
+      <div style="font-size:15px;font-weight:800;color:${cfg.color};margin:5px 0 2px">${slab}</div>
+      <div style="font-size:10px;color:#64748b;margin-bottom:12px">${range} views</div>
+      <div class="slab-row"><span style="color:#94a3b8">👍 Like</span><span style="font-weight:700;color:#fb923c">${l}</span></div>
+      <div class="slab-row"><span style="color:#94a3b8">👁 View</span><span style="font-weight:700;color:#60a5fa">${v}</span></div>
+      <div class="slab-row"><span style="color:#94a3b8">↗ Share</span><span style="font-weight:700;color:#34d399">${s}</span></div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid ${cfg.border}55;font-size:10px;color:#475569">${slabCounts[slab]||0} dealers</div>`;
+    slabEl.appendChild(el);
+  });
+
+  const tbody = document.getElementById('bd-tbody');
+  tbody.innerHTML = '';
+  filtered.forEach((d, i) => {
+    const cfg = SLAB[d.topSlab];
+    const pct = v => d.totalPts > 0 ? Math.round((v/d.totalPts)*100) : 0;
+    const mkBar = (val, col) => `
+      <td style="text-align:right">
+        <div class="mini-bar-wrap">
+          <div class="mini-bar"><div class="mini-bar-fill" style="width:${pct(val)}%;background:${col}"></div></div>
+          <span style="color:${col};font-weight:600">${fmt(val)}</span>
+        </div>
+      </td>`;
+    const tr = document.createElement('tr');
+    tr.style.cssText = `background:${i%2===0?'#080f1f':'#0a1020'};border-left:3px solid ${d.rank<=3?cfg.color:'transparent'}`;
+    tr.innerHTML = `
+      <td style="color:#475569;font-weight:700">#${d.rank}</td>
+      <td style="font-weight:700;color:${d.rank<=3?cfg.color:'#e2e8f0'}">${d.DMS}</td>
+      <td><span class="slab-badge" style="background:${cfg.color}22;color:${cfg.color};font-size:9px">${cfg.emoji} ${d.topSlab}</span></td>
+      ${mkBar(d.likePts,'#fb923c')}
+      ${mkBar(d.viewPts,'#60a5fa')}
+      ${mkBar(d.sharePts,'#34d399')}
+      <td style="text-align:right;font-weight:800;color:${cfg.color}">${fmt(d.totalPts)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── DETAIL PANEL ─────────────────────────────────────────────────────────────
+function renderDetail() {
+  const d = state.selected;
+  if (!d) return;
+  const cfg  = SLAB[d.topSlab];
+  const post = RAW_POSTS.find(p => p.dms === d.DMS);
+  const pct  = v => d.totalPts > 0 ? ((v/d.totalPts)*100).toFixed(0) : 0;
+
+  const stats = [
+    ['👁 Views',d.totalViews,'#60a5fa'],['👍 Likes',d.totalLikes,'#fb923c'],
+    ['↗ Shares',d.totalShares,'#34d399'],['🔥 Eng.',d.totalEng,'#c084fc'],['📡 Reach',d.totalReach,'#22d3ee'],
+  ];
+  const bdRows = [
+    ['Like Pts',d.likePts,'#fb923c'],
+    ['View Pts',d.viewPts,'#60a5fa'],
+    ['Share Pts',d.sharePts,'#34d399'],
+  ];
+
+  let html = `
+    <div class="detail-hero" style="background:linear-gradient(135deg,${cfg.bg},#0a1020);border:1px solid ${cfg.color}">
+      <div style="font-size:10px;font-weight:700;color:${cfg.color};margin-bottom:3px">${cfg.emoji} ${d.topSlab} · Rank #${d.rank}</div>
+      <div style="font-size:20px;font-weight:900;color:#f8fafc;margin-bottom:2px">DMS ${d.DMS}</div>
+      <div style="font-size:24px;font-weight:800;color:${cfg.color}">${fmt(d.totalPts)} <span style="font-size:11px;color:#64748b;font-weight:400">pts</span></div>
+    </div>
+    <div class="detail-stats">
+      ${stats.map(([lbl,val,col]) => `
+        <div class="detail-stat">
+          <div class="detail-stat-label">${lbl}</div>
+          <div class="detail-stat-val" style="color:${col}">${fmt(val)}</div>
+        </div>`).join('')}
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;color:#64748b;margin-bottom:7px;letter-spacing:1px">POINTS BREAKDOWN</div>
+      ${bdRows.map(([lbl,val,col]) => `
+        <div class="bd-bar-row">
+          <div class="bd-bar-meta">
+            <span style="color:#94a3b8">${lbl}</span>
+            <span style="font-weight:700;color:${col}">${fmt(val)} (${pct(val)}%)</span>
+          </div>
+          <div class="bd-bar-track"><div class="bd-bar-fill" style="width:${pct(val)}%;background:${col}"></div></div>
+        </div>`).join('')}
+    </div>`;
+
+  if (post) {
+    const caption = post.caption.length > 110 ? post.caption.slice(0,110)+'…' : post.caption;
+    html += `
+      <div class="detail-post">
+        <div style="font-size:10px;color:#475569;margin-bottom:7px;letter-spacing:1px">POST DETAILS</div>
+        <div style="font-size:11px;color:#94a3b8;margin-bottom:5px">📅 ${post.postedAt}</div>
+        <div style="font-size:11px;color:#cbd5e1;margin-bottom:10px;line-height:1.5">${caption}</div>
+        <a href="${post.link}" target="_blank" rel="noopener noreferrer" class="detail-post-link">View Reel ↗</a>
+      </div>`;
+  }
+
+  document.getElementById('detail-content').innerHTML = html;
+}
+
+// ── EVENT LISTENERS ──────────────────────────────────────────────────────────
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.onclick = () => { state.view = btn.dataset.tab; render(); };
+});
+
+// Slab filter pills
+function applyPillStyles() {
+  document.querySelectorAll('.pill').forEach(p => {
+    const col    = SLAB_COLORS[p.dataset.slab];
+    const active = p.dataset.slab === state.slabFilter;
+    p.style.cssText = active
+      ? `border:1px solid ${col};background:${col}33;color:${col}`
+      : `border:1px solid #334155;background:#0f172a;color:#64748b`;
+  });
+}
+
+document.querySelectorAll('.pill').forEach(btn => {
+  btn.onclick = () => { state.slabFilter = btn.dataset.slab; applyPillStyles(); render(); };
+});
+
+// Sort buttons
+function applySortStyles() {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === state.sortBy));
+}
+
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.onclick = () => { state.sortBy = btn.dataset.sort; applySortStyles(); render(); };
+});
+
+// Close detail
+document.getElementById('close-detail').onclick = () => { state.selected = null; render(); };
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+applyPillStyles();
+applySortStyles();
+render();
+</script>
+</body>
+</html>
